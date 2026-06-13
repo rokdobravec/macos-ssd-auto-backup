@@ -1,5 +1,3 @@
-Here's a cleaner, better-looking README with badges, better formatting, and a more professional appearance:
-
 ```markdown
 # 💾 Auto Backup to External SSD
 
@@ -289,19 +287,3 @@ Remove /bin/bash from Files & Folders or Full Disk Access if desired.
 MIT – use it, modify it, share it. No attribution required.
 
 ---
-
-<div align="center">Made with 🖥️ for macOS users who forget to back up
-
-Report Bug · Request Feature
-
-</div>
-```This version has:
-
-· Badges at the top
-· Better visual hierarchy with dividers
-· Collapsible sections for customization and troubleshooting
-· A cleaner "How It Works" diagram
-· Professional formatting
-· Emojis for visual appeal but still readable
-
-Just copy this entire block into your README.md file.
