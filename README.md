@@ -1,11 +1,8 @@
-
-
-```markdown
 # Auto Backup to External SSD - macOS
 
 Automatically syncs your `Documents` folder to an external SSD whenever it's connected. Perfect for keeping a real-time backup without thinking about it.
 
-## Features
+## ✨ Features
 
 - **Automatic** – runs when you plug in your SSD
 - **Silent** – one notification per connection, not every 30 seconds
@@ -13,13 +10,13 @@ Automatically syncs your `Documents` folder to an external SSD whenever it's con
 - **Efficient** – uses `rsync`, only copies changed files
 - **Zero interaction** – works in the background
 
-## Requirements
+## 📋 Requirements
 
 - macOS (tested on Apple Silicon M1/M2/M3, works on Intel too)
 - External SSD (or any USB drive) formatted as APFS, exFAT, or Mac OS Extended
 - Your `Documents` folder (or any folder you choose)
 
-## What this does
+## 🗂️ What this does
 
 | Action | Result |
 |--------|--------|
@@ -30,22 +27,20 @@ Automatically syncs your `Documents` folder to an external SSD whenever it's con
 | Files deleted from `~/Documents` | **Stay on SSD** (no automatic deletion) |
 | Extra files on SSD not in `~/Documents` | **Left untouched** |
 
-## File structure after setup
+## 📁 File structure after setup
 
 ```
-
 ~/Library/Scripts/
-└── sync-to-ssd.sh
+└── sync-to-ssd.sh              # The backup script
 
 ~/Library/LaunchAgents/
-└── com.user.ssd-sync.plist
+└── com.user.ssd-sync.plist     # The automation trigger
 
 ~/Library/Scripts/
-└── sync-to-ssd.log
-
+└── sync-to-ssd.log              # Backup log (auto-created)
 ```
 
-## Setup Instructions
+## ⚙️ Setup Instructions
 
 ### Step 1: Create the backup script
 
@@ -55,17 +50,25 @@ Open Terminal and run:
 mkdir -p ~/Library/Scripts
 ```
 
-Create the script file (replace YOUR_USERNAME and YOUR_SSD_NAME):
+Create the script file (replace `YOUR_USERNAME` and `YOUR_SSD_NAME`):
 
 ```bash
 cat > ~/Library/Scripts/sync-to-ssd.sh << 'EOF'
 #!/bin/bash
+# ============================================
+# Auto Backup to External SSD
+# ============================================
+# Edit these three variables to match your setup:
 SOURCE_FOLDER="/Users/YOUR_USERNAME/Documents"
-SSD_NAME="YOUR_SSD_NAME"
-DEST_SUBFOLDER="Backup"
+SSD_NAME="YOUR_SSD_NAME"           # Exactly as shown in Finder
+DEST_SUBFOLDER="Backup"             # Folder name on SSD (can be "" for root)
 
+# ============================================
+# Don't edit below this line
+# ============================================
 SSD_PATH="/Volumes/$SSD_NAME"
 
+# Clean up stale notification flag if SSD not mounted
 if [ ! -d "$SSD_PATH" ]; then
     rm -f "/tmp/ssd_notified_$SSD_NAME"
 fi
@@ -73,8 +76,11 @@ fi
 if [ -d "$SSD_PATH" ] && [ -d "$SOURCE_FOLDER" ]; then
     DEST_PATH="$SSD_PATH/$DEST_SUBFOLDER"
     /bin/mkdir -p "$DEST_PATH"
+    
+    # Copy files (archive mode, ignore permission errors)
     /usr/bin/rsync -a --ignore-errors "$SOURCE_FOLDER/" "$DEST_PATH/"
     
+    # Notify only once per SSD connection
     NOTIF_FLAG="/tmp/ssd_notified_$SSD_NAME"
     if [ ! -f "$NOTIF_FLAG" ]; then
         CURRENT_USER=$(/usr/bin/stat -f "%Su" /dev/console)
@@ -84,12 +90,15 @@ if [ -d "$SSD_PATH" ] && [ -d "$SOURCE_FOLDER" ]; then
         touch "$NOTIF_FLAG"
     fi
     
+    # Log the sync
     echo "$(/bin/date): Synced $SOURCE_FOLDER to $DEST_PATH" >> ~/Library/Scripts/sync-to-ssd.log
 fi
 EOF
 ```
 
-Important: Replace YOUR_USERNAME with your actual macOS username (run whoami in Terminal) and YOUR_SSD_NAME with your SSD's volume name as shown in Finder.
+**Important:** Replace:
+- `YOUR_USERNAME` with your actual macOS username (run `whoami` in Terminal)
+- `YOUR_SSD_NAME` with your SSD's volume name as shown in Finder
 
 Make the script executable:
 
@@ -97,9 +106,9 @@ Make the script executable:
 chmod +x ~/Library/Scripts/sync-to-ssd.sh
 ```
 
-Step 2: Create the automation (Launch Agent)
+### Step 2: Create the automation (Launch Agent)
 
-Create the plist file (replace YOUR_USERNAME):
+Create the plist file (replace `YOUR_USERNAME`):
 
 ```bash
 cat > ~/Library/LaunchAgents/com.user.ssd-sync.plist << 'EOF'
@@ -123,25 +132,19 @@ cat > ~/Library/LaunchAgents/com.user.ssd-sync.plist << 'EOF'
 EOF
 ```
 
-Step 3: Grant necessary permissions
+### Step 3: Grant Full Disk Access (Required!)
 
-Try these options in order:
+macOS blocks background scripts from accessing your Documents folder unless you explicitly allow it.
 
-Option A (Recommended): Grant Files and Folders access
+1. Open **System Settings** → **Privacy & Security** → **Full Disk Access**
+2. Click the lock icon to make changes
+3. Click the **+** button (or drag and drop)
+4. Press `Cmd + Shift + G` and type `/bin/bash`
+5. Click **Open** and ensure the toggle is **ON**
 
-1. Open System Settings → Privacy & Security → Files and Folders
-2. Click the lock to make changes
-3. Click the + button
-4. Press Cmd + Shift + G and type /bin/bash
-5. Click Open and ensure Documents Folder and Removable Volumes are toggled ON
+> **Why this is needed:** Even though the script runs as you, macOS treats background processes differently from Terminal. This one-time permission solves the "Operation not permitted" error.
 
-Option B (if Option A doesn't work): Grant Full Disk Access
-
-1. Open System Settings → Privacy & Security → Full Disk Access
-2. Click the lock → + → Cmd + Shift + G → /bin/bash
-3. Click Open and toggle it ON
-
-Step 4: Load the automation
+### Step 4: Load the automation
 
 ```bash
 launchctl load ~/Library/LaunchAgents/com.user.ssd-sync.plist
@@ -153,93 +156,150 @@ Verify it's running:
 launchctl list | grep ssd-sync
 ```
 
-Step 5: Test it
+You should see output like: `12345 0 com.user.ssd-sync`
 
-1. Unplug your SSD
-2. Plug it back in
-3. Wait 30 seconds
+### Step 5: Test it
+
+1. **Unplug** your SSD
+2. **Plug it back in**
+3. **Wait 30 seconds**
 4. Check the log:
    ```bash
    cat ~/Library/Scripts/sync-to-ssd.log
    ```
+5. You should see a notification banner confirming the backup
 
-You should see a notification banner confirming the backup.
+## 🎛️ Customization
 
-Customization
+### Change the source folder
 
-Change the source folder:
-Edit ~/Library/Scripts/sync-to-ssd.sh and change SOURCE_FOLDER.
+Edit `~/Library/Scripts/sync-to-ssd.sh` and change:
+```bash
+SOURCE_FOLDER="/Users/YOUR_USERNAME/Documents"
+```
+to any folder you want (e.g., `"/Users/YOUR_USERNAME/Desktop"` or `"/Users/YOUR_USERNAME/Pictures"`)
 
-Change the destination subfolder:
-Edit DEST_SUBFOLDER variable. Use "" for root of SSD.
+### Change the destination subfolder
 
-Change how often the script runs:
-Edit ~/Library/LaunchAgents/com.user.ssd-sync.plist and change the StartInterval value (in seconds). Then reload:
+Edit the `DEST_SUBFOLDER` variable:
+- Use `""` (empty quotes) to copy directly to the root of the SSD
+- Use `"MyBackups"` to put everything inside a folder called `MyBackups`
 
+### Change how often the script runs
+
+Edit `~/Library/LaunchAgents/com.user.ssd-sync.plist` and change the number:
+```xml
+<key>StartInterval</key>
+<integer>30</integer>   <!-- Change 30 to any number of seconds -->
+```
+
+Then reload:
 ```bash
 launchctl unload ~/Library/LaunchAgents/com.user.ssd-sync.plist
 launchctl load ~/Library/LaunchAgents/com.user.ssd-sync.plist
 ```
 
-Disable notifications:
-Remove or comment out the osascript block in sync-to-ssd.sh.
+### Disable notifications
 
-Troubleshooting
+Remove or comment out this block from `sync-to-ssd.sh`:
+```bash
+    if [ ! -f "$NOTIF_FLAG" ]; then
+        CURRENT_USER=$(/usr/bin/stat -f "%Su" /dev/console)
+        if [ -n "$CURRENT_USER" ]; then
+            /usr/bin/sudo -u "$CURRENT_USER" /usr/bin/osascript -e "display notification..."
+        fi
+        touch "$NOTIF_FLAG"
+    fi
+```
 
-"Operation not permitted" error:
-Try Option A first. If that doesn't work, use Option B from Step 3. Then unplug and replug your SSD.
+## 🔧 Troubleshooting
 
-Script runs but nothing copies:
+### "Operation not permitted" error
 
-1. Check your SSD volume name: ls /Volumes (must match exactly, case-sensitive)
-2. Verify source folder exists: ls ~/Documents
+**Solution:** Go to **System Settings → Privacy & Security → Full Disk Access** and add `/bin/bash`. Then unplug and replug your SSD.
 
-No notification appears:
+### Script runs but nothing copies
 
-1. Check if script ran: cat ~/Library/Scripts/sync-to-ssd.log
-2. Check System Settings → Notifications → Script Editor → allow banners
+1. Check your SSD volume name – it must match exactly (case-sensitive):
+   ```bash
+   ls /Volumes
+   ```
+2. Verify the source folder exists:
+   ```bash
+   ls ~/Documents
+   ```
 
-Multiple notifications on one connection:
-Delete the stale flag: rm -f /tmp/ssd_notified_YOUR_SSD_NAME
+### No notification appears
 
-"Input/output error" when loading:
-Validate the plist: plutil ~/Library/LaunchAgents/com.user.ssd-sync.plist
-It should output: com.user.ssd-sync.plist: OK
+1. Check if the script ran at all:
+   ```bash
+   cat ~/Library/Scripts/sync-to-ssd.log
+   ```
+2. If the log shows the sync happened but no notification, check System Settings → Notifications → Script Editor (or Terminal) and ensure banners are allowed.
 
-Uninstalling
+### Multiple notifications on one connection
+
+This is already prevented by the flag system. If it still happens, delete the stale flag:
+```bash
+rm -f /tmp/ssd_notified_YOUR_SSD_NAME
+```
+
+### "Input/output error" when loading
+
+The plist file might be malformed. Validate it:
+```bash
+plutil ~/Library/LaunchAgents/com.user.ssd-sync.plist
+```
+It should output: `com.user.ssd-sync.plist: OK`
+
+If not, recreate the plist from Step 2.
+
+## 🛑 Uninstalling
+
+To completely remove the automation:
 
 ```bash
+# Stop and remove the launch agent
 launchctl unload ~/Library/LaunchAgents/com.user.ssd-sync.plist
 rm ~/Library/LaunchAgents/com.user.ssd-sync.plist
+
+# Remove the script
 rm ~/Library/Scripts/sync-to-ssd.sh
+
+# Remove the log (optional)
 rm ~/Library/Scripts/sync-to-ssd.log
+
+# Remove the notification flag
 rm -f /tmp/ssd_notified_*
 ```
 
-How it works
+You can also remove `/bin/bash` from Full Disk Access in System Settings if desired.
 
-1. Launch Agent – macOS runs the script every 30 seconds
-2. Script execution – Checks if your SSD is mounted
-3. rsync – Copies files (archive mode, preserves permissions, recursive)
-4. Notification – Shows a banner once per connection (flag prevents repeats)
-5. Logging – Each sync is timestamped to the log file
+## 📖 How it works (technical overview)
 
-Privacy & Security
+1. **Launch Agent** – macOS runs `com.user.ssd-sync.plist` every 30 seconds
+2. **Script execution** – The script checks if your SSD is mounted at `/Volumes/YOUR_SSD_NAME`
+3. **rsync** – If mounted, `rsync -a` copies all files from source to destination:
+   - `-a` (archive mode) preserves permissions, timestamps, and copies recursively
+   - `--ignore-errors` continues even if some files fail
+4. **Notification** – `osascript` shows a banner once per connection (flag file prevents repeats)
+5. **Logging** – Each sync is timestamped in `~/Library/Scripts/sync-to-ssd.log`
 
-· The script never sends data anywhere – only local copies
-· All paths are local (/Users/..., /Volumes/...)
-· No internet access required or used
-· Try Option A first – only use Option B if needed
+## 🔒 Privacy & Security
 
-License
+- The script never sends data anywhere – it only copies locally to your external drive
+- All paths are local (`/Users/...`, `/Volumes/...`)
+- No internet access required or used
+- The only permission needed is Full Disk Access for `/bin/bash` (required by macOS for background file access)
+
+## 📝 License
 
 Feel free to use, modify, and share this script. No attribution required.
 
+## 🤝 Contributing
+
+Found a bug or have an improvement? Open an issue or pull request on GitHub.
+
 ---
 
-Enjoy your automatic backups!
-
-```
-
-
-```
+**Enjoy your automatic backups!** 🚀
